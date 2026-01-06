@@ -8,10 +8,10 @@ use log::{error, info};
 
 pub(crate) async fn get_btc_snapshot() -> Option<BitnodesSnapshot> {
     let mut json = None;
-    if let Ok(body) = reqwest::get("https://bitnodes.io/api/v1/snapshots/latest/").await {
-        if let Ok(text) = body.text().await {
-            json = serde_json::from_str(&text).ok()
-        }
+    if let Ok(body) = reqwest::get("https://bitnodes.io/api/v1/snapshots/latest/").await
+        && let Ok(text) = body.text().await
+    {
+        json = serde_json::from_str(&text).ok()
     }
     json
 }
@@ -24,7 +24,7 @@ pub(crate) async fn get_ln_snapshot(config: LndConfig) -> Option<ChannelGraph> {
     )
     .await
     {
-        Ok(mut client) => describegraph(client).await,
+        Ok(client) => describegraph(client).await,
         Err(e) => {
             error!("Error {e} connecting to LND.");
             None

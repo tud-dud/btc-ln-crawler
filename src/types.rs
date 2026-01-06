@@ -14,20 +14,22 @@ pub(crate) struct Graph {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(unused)]
 pub(crate) struct BitnodesSnapshot {
-    pub(crate) timestamp: usize,
-    pub(crate) total_nodes: usize,
-    pub(crate) latest_height: usize,
+    timestamp: usize,
+    total_nodes: usize,
+    latest_height: usize,
     pub(crate) nodes: HashMap<String, Bitnode>,
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub(crate) struct Bitnode {
-    pub(crate) protocol_version: u32,
-    pub(crate) user_agent: String,
-    pub(crate) last_seen: u64,
-    pub(crate) services: u64,
-    pub(crate) best_height: u32,
+    protocol_version: u32,
+    user_agent: String,
+    last_seen: u64,
+    services: u64,
+    best_height: u32,
 }
 
 #[derive(Debug, Serialize, Hash, PartialEq, Eq)]
@@ -87,8 +89,6 @@ impl<'de> Deserialize<'de> for Bitnode {
 mod tests {
 
     use super::*;
-    use std::{fs::File, io::Write, str::FromStr};
-    use tempfile::tempdir;
 
     #[test]
     fn parse_config() {

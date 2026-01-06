@@ -32,7 +32,7 @@ pub(crate) fn find_overlapping_nodes(bitcoin: BitnodesSnapshot, lightning: Chann
 
 fn clean_bitnodes_snapshot(nodes: &HashMap<String, Bitnode>) -> HashSet<GenericNode> {
     let mut keep_addresses = HashSet::new();
-    for (addr, _data) in nodes {
+    for addr in nodes.keys() {
         if !is_not_public_or_is_tor_address(addr) {
             keep_addresses.insert(GenericNode { addr: addr.clone() });
         }
