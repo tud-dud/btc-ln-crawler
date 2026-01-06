@@ -4,8 +4,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use fedimint_tonic_lnd::lnrpc::{ChannelGraph, LightningNode};
 use log::{error, info};
+use tonic_lnd::lnrpc::{ChannelGraph, LightningNode};
 
 use crate::types::{Bitnode, BitnodesSnapshot, GenericNode, Graph};
 

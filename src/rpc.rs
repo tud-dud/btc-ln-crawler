@@ -1,10 +1,10 @@
 use crate::types::{BitnodesSnapshot, LndConfig};
 
-use fedimint_tonic_lnd::{
+use log::{error, info};
+use tonic_lnd::{
     Client,
     lnrpc::{ChannelGraph, ChannelGraphRequest},
 };
-use log::{error, info};
 
 pub(crate) async fn get_btc_snapshot() -> Option<BitnodesSnapshot> {
     let mut json = None;
@@ -17,16 +17,10 @@ pub(crate) async fn get_btc_snapshot() -> Option<BitnodesSnapshot> {
 }
 
 pub(crate) async fn get_ln_snapshot(config: LndConfig) -> Option<ChannelGraph> {
-    match fedimint_tonic_lnd::connect(
-        config.address.clone(),
-        config.certificate.clone(),
-        config.macaroon.clone(),
-    )
-    .await
-    {
+    match tonic_lnd::connect(config.address, config.certificate, config.macaroon).await {
         Ok(client) => describegraph(client).await,
         Err(e) => {
-            error!("Error {e} connecting to LND.");
+            error!("Error connecting to LND: {e}");
             None
         }
     }
@@ -45,7 +39,7 @@ async fn describegraph(mut client: Client) -> Option<ChannelGraph> {
             Some(response.into_inner())
         }
         Err(e) => {
-            error!("Error {e} getting ChannelGraph");
+            error!("Error getting ChannelGraph: {e}");
             None
         }
     }
