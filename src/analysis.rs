@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    net::IpAddr,
+    net::{IpAddr, SocketAddr},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -71,8 +71,8 @@ fn clean_lightning_snapshot(nodes: &Vec<LightningNode>) -> HashSet<GenericNode> 
 fn is_not_public_or_is_tor_address(addr: &String) -> bool {
     let mut is_public_routable = false;
     if !addr.contains(".onion") {
-        if let Ok(ip) = addr.parse::<IpAddr>() {
-            match ip {
+        if let Ok(sock_addr) = addr.parse::<SocketAddr>() {
+            match sock_addr.ip() {
                 IpAddr::V4(ipv4) => {
                     if ipv4.is_unspecified()
                         || ipv4.is_private()
