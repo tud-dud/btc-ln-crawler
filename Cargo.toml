@@ -1,0 +1,8 @@
+[package]
+name = "btc-ln-crawler"
+version = "0.1.0"
+edition = "2024"
+authors = ["Charmaine Ndolo <charmaine.ndolo@tu-dresden.de>"]
+license = "MIT"
+
+[dependencies]

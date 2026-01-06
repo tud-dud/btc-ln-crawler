@@ -1,0 +1,5 @@
+*.bak
+/target
+Cargo.lock
+*.swp
+data
