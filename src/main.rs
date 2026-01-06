@@ -1,9 +1,11 @@
+use analysis::find_overlapping_nodes;
 use clap::Parser;
 use log::{LevelFilter, error, info};
 use rpc::{get_btc_snapshot, get_ln_snapshot};
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 use types::LndConfig;
 
+mod analysis;
 mod rpc;
 mod types;
 
@@ -39,7 +41,24 @@ async fn main() {
         };
         if let Err(e) = std::fs::create_dir_all(&output_dir) {
             error!("Error creating output directory {e}");
+        } else {
+            info!("Crawl results will be written to {output_dir:#?}/ directory.");
+
+            if let Some(ln_snapshot) = get_ln_snapshot(config).await
+                && let Some(bitcoin_snapshot) = get_btc_snapshot().await
+            {
+                let intersection_graph = find_overlapping_nodes(bitcoin_snapshot, ln_snapshot);
+                let mut path = output_dir.clone();
+                path.push(format!("crawl-{}.json", intersection_graph.timestamp));
+                if let Ok(f) = File::create(&path) {
+                    match serde_json::to_writer_pretty(f, &intersection_graph) {
+                        Ok(_) => {
+                            info!("Crawl results written to {} successfully", path.display())
+                        }
+                        Err(e) => error!("Error {e} writing graph to {} as JSON", path.display()),
+                    }
+                }
+            }
         }
-        info!("Crawl results will be written to {output_dir:#?}/ directory.");
     }
 }

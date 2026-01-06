@@ -1,6 +1,17 @@
 use log::error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
+
+#[derive(Debug, Default, Serialize)]
+pub(crate) struct Graph {
+    pub(crate) timestamp: u64,
+    /// public nodes
+    pub(crate) num_bitcoin: usize,
+    /// public addresses (not nodes since LN nodes can announce multiple)
+    pub(crate) num_lightning: usize,
+    pub(crate) num_overlap: usize,
+    pub(crate) addresses: Vec<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct BitnodesSnapshot {
@@ -17,6 +28,11 @@ pub(crate) struct Bitnode {
     pub(crate) last_seen: u64,
     pub(crate) services: u64,
     pub(crate) best_height: u32,
+}
+
+#[derive(Debug, Serialize, Hash, PartialEq, Eq)]
+pub(crate) struct GenericNode {
+    pub(crate) addr: String,
 }
 
 #[derive(Debug, Deserialize)]
