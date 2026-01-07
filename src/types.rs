@@ -22,7 +22,7 @@ pub(crate) struct BitnodesSnapshot {
     pub(crate) nodes: HashMap<String, Bitnode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[allow(unused)]
 pub(crate) struct Bitnode {
     protocol_version: u32,

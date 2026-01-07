@@ -33,8 +33,12 @@ pub(crate) fn find_overlapping_nodes(bitcoin: BitnodesSnapshot, lightning: Chann
 fn clean_bitnodes_snapshot(nodes: &HashMap<String, Bitnode>) -> HashSet<GenericNode> {
     let mut keep_addresses = HashSet::new();
     for addr in nodes.keys() {
-        if !is_not_public_or_is_tor_address(addr) {
-            keep_addresses.insert(GenericNode { addr: addr.clone() });
+        if let Some(ip) = from_str_to_ip(addr)
+            && !is_not_public_or_is_tor_address(ip)
+        {
+            keep_addresses.insert(GenericNode {
+                addr: ip.to_string(),
+            });
         }
     }
     info!(
@@ -49,9 +53,11 @@ fn clean_lightning_snapshot(nodes: &Vec<LightningNode>) -> HashSet<GenericNode> 
     let mut keep_addresses = HashSet::new();
     for node in nodes {
         for addr in &node.addresses {
-            if !is_not_public_or_is_tor_address(&addr.addr) {
+            if let Some(ip) = from_str_to_ip(&addr.addr)
+                && !is_not_public_or_is_tor_address(ip)
+            {
                 keep_addresses.insert(GenericNode {
-                    addr: addr.addr.clone(),
+                    addr: ip.to_string(),
                 });
             }
         }
@@ -67,36 +73,135 @@ fn clean_lightning_snapshot(nodes: &Vec<LightningNode>) -> HashSet<GenericNode> 
     keep_addresses
 }
 
+fn from_str_to_ip(addr: &String) -> Option<IpAddr> {
+    if let Ok(sock_addr) = addr.parse::<SocketAddr>() {
+        Some(sock_addr.ip())
+    } else {
+        error!("Error converting {addr} to IpAddr");
+        None
+    }
+}
+
 // true if its a private or Tor IP address
-fn is_not_public_or_is_tor_address(addr: &String) -> bool {
+fn is_not_public_or_is_tor_address(addr: IpAddr) -> bool {
     let mut is_public_routable = false;
-    if !addr.contains(".onion") {
-        if let Ok(sock_addr) = addr.parse::<SocketAddr>() {
-            match sock_addr.ip() {
-                IpAddr::V4(ipv4) => {
-                    if ipv4.is_unspecified()
-                        || ipv4.is_private()
-                        || ipv4.is_loopback()
-                        || ipv4.is_documentation()
-                        || ipv4.is_broadcast()
-                        || ipv4.is_link_local()
-                    {
-                        is_public_routable = true;
-                    }
-                }
-                IpAddr::V6(ipv6) => {
-                    if ipv6.is_unspecified()
-                        || ipv6.is_unique_local()
-                        || ipv6.is_loopback()
-                        || ipv6.is_unicast_link_local()
-                    {
-                        is_public_routable = true;
-                    }
-                }
+    match addr {
+        IpAddr::V4(ipv4) => {
+            if ipv4.is_unspecified()
+                || ipv4.is_private()
+                || ipv4.is_loopback()
+                || ipv4.is_documentation()
+                || ipv4.is_broadcast()
+                || ipv4.is_link_local()
+            {
+                is_public_routable = true;
             }
-        } else {
-            error!("Error converting  {addr} to IpAddr");
+        }
+        IpAddr::V6(ipv6) => {
+            if ipv6.is_unspecified()
+                || ipv6.is_unique_local()
+                || ipv6.is_loopback()
+                || ipv6.is_unicast_link_local()
+            {
+                is_public_routable = true;
+            }
         }
     }
     is_public_routable
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::net::Ipv4Addr;
+
+    use tonic_lnd::lnrpc::NodeAddress;
+
+    use super::*;
+
+    #[test]
+    fn parse_ip_str() {
+        let tor = "fufxobnxbep2szdexwk2lxyv7qtl3ycddv7dspwjbgrsnfmzrceivnid.onion:8333".to_string();
+        let actual = from_str_to_ip(&tor);
+        assert!(actual.is_none());
+
+        let ipv6 = "[2a12:8e40:5668:e40c::1]:8333".to_string();
+        let actual = from_str_to_ip(&ipv6);
+        assert!(actual.is_some());
+        let ipv4 = "176.123.166.122:8333".to_string();
+        let actual = from_str_to_ip(&ipv4);
+        assert!(actual.is_some());
+    }
+
+    #[test]
+    fn is_public_ip() {
+        let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        assert!(is_not_public_or_is_tor_address(ip));
+    }
+
+    #[test]
+    fn clean_btc_nodes() {
+        let nodes = HashMap::from([
+            ("194.230.239.52:8333".to_string(), Bitnode::default()),
+            (
+                "lp2cmaeso5o2ffj2xuuu7a7rcwq6dshialkx6zo3w2wx2xbz37lkg5qd.onion:8333".to_string(),
+                Bitnode::default(),
+            ),
+            ("[2a01:4f8:231:285::2]:8333".to_string(), Bitnode::default()),
+        ]);
+        let expected = HashSet::from([
+            GenericNode {
+                addr: "194.230.239.52".to_string(),
+            },
+            GenericNode {
+                addr: "2a01:4f8:231:285::2".to_string(),
+            },
+        ]);
+        let actual = clean_bitnodes_snapshot(&nodes);
+        assert_eq!(actual.len(), expected.len());
+    }
+    #[test]
+    fn clean_ln_nodes() {
+        let nodes = vec![
+            LightningNode {
+                addresses: vec![
+                    NodeAddress {
+                        addr: "194.230.239.52:9735".to_string(),
+                        network: "tcp".to_string(),
+                    },
+                    NodeAddress {
+                        addr: "br4uj734xva77u7yt6oevyp2ropqjl7nw2jyzeejwmd7dzlouenkfmid.onion:9735"
+                            .to_string(),
+                        network: "tcp".to_string(),
+                    },
+                ],
+                ..Default::default()
+            },
+            LightningNode {
+                addresses: vec![NodeAddress {
+                    addr: "lp2cmaeso5o2ffj2xuuu7a7rcwq6dshialkx6zo3w2wx2xbz37lkg5qd.onion:8333"
+                        .to_string(),
+                    network: "tcp".to_string(),
+                }],
+                ..Default::default()
+            },
+            LightningNode {
+                addresses: vec![NodeAddress {
+                    addr: "[2a01:4f8:231:285::2]:9735".to_string(),
+                    network: "tcp".to_string(),
+                }],
+                ..Default::default()
+            },
+        ];
+        let expected = HashSet::from([
+            GenericNode {
+                addr: "194.230.239.52".to_string(),
+            },
+            GenericNode {
+                addr: "2a01:4f8:231:285::2".to_string(),
+            },
+        ]);
+        let actual = clean_lightning_snapshot(&nodes);
+        assert_eq!(actual.len(), expected.len());
+    }
 }
