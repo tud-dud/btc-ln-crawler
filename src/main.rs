@@ -11,14 +11,14 @@ mod types;
 
 #[derive(clap::Parser)]
 #[command(version, about)]
-/// Simulate occupying a node's outgoing connection slots at a given rate of disconnections with a
-/// given number of IP prefixes.
+/// Find IP addresses of active, reachable nodes that are used in both Bitcoin and Lightning
 struct Cli {
     #[arg(long = "log", short = 'l', default_value = "info")]
     log_level: LevelFilter,
     /// Path to directory where the results will be stored
     #[arg(long = "out", short = 'o')]
     output_dir: Option<PathBuf>,
+    /// Config file with credentials for the LND node's RPC interface
     #[arg(long = "config", short = 'c', default_value = "./lnd.toml")]
     config: PathBuf,
 
