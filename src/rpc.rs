@@ -3,7 +3,7 @@ use crate::types::{BitnodesSnapshot, LndConfig};
 use log::{error, info};
 use tonic_lnd::{
     Client,
-    lnrpc::{ChannelGraph, ChannelGraphRequest},
+    lnrpc::{ChannelGraph, ChannelGraphRequest, NodeInfo, NodeInfoRequest},
 };
 
 pub(crate) async fn get_btc_snapshot() -> Option<BitnodesSnapshot> {
@@ -40,6 +40,34 @@ async fn describegraph(mut client: Client) -> Option<ChannelGraph> {
         }
         Err(e) => {
             error!("Error getting ChannelGraph: {e}");
+            None
+        }
+    }
+}
+
+pub(crate) async fn nodeinfo(config: LndConfig, pubkey: &str) -> Option<NodeInfo> {
+    match tonic_lnd::connect(config.address, config.certificate, config.macaroon).await {
+        Ok(mut client) => {
+            match client
+                .lightning()
+                .get_node_info(NodeInfoRequest {
+                    pub_key: pubkey.to_owned(),
+                    include_channels: true,
+                })
+                .await
+            {
+                Ok(response) => {
+                    info!("Got node info from LND");
+                    Some(response.into_inner())
+                }
+                Err(e) => {
+                    error!("Error getting NodeInfo: {e}");
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            error!("Error connecting to LND: {e}");
             None
         }
     }

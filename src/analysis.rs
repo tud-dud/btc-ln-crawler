@@ -5,11 +5,18 @@ use std::{
 };
 
 use log::{error, info};
-use tonic_lnd::lnrpc::{ChannelGraph, LightningNode};
+use tonic_lnd::lnrpc::{ChannelEdge, ChannelGraph, LightningNode};
 
-use crate::types::{Bitnode, BitnodesSnapshot, GenericNode, Graph};
+use crate::{
+    rpc::nodeinfo,
+    types::{Bitnode, BitnodesSnapshot, Channel, GenericNode, Graph, LndConfig, Node},
+};
 
-pub(crate) fn find_overlapping_nodes(bitcoin: BitnodesSnapshot, lightning: ChannelGraph) -> Graph {
+pub(crate) async fn find_overlapping_nodes(
+    bitcoin: BitnodesSnapshot,
+    lightning: ChannelGraph,
+    lnd_config: LndConfig,
+) -> Graph {
     let bitcoin_nodes = clean_bitnodes_snapshot(&bitcoin.nodes);
     let lightning_nodes = clean_lightning_snapshot(&lightning.nodes);
     let intersection: HashSet<_> = bitcoin_nodes.intersection(&lightning_nodes).collect();
@@ -21,13 +28,51 @@ pub(crate) fn find_overlapping_nodes(bitcoin: BitnodesSnapshot, lightning: Chann
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+    let mut nodes = vec![];
+    for i in &intersection {
+        let mut node = Node::default();
+        if let Some(ln_node) = find_node_by_ip(&lightning.nodes, &i.addr) {
+            node.address = i.addr.clone();
+            node.alias = ln_node.alias.clone();
+            if let Some(channels) = get_channels_by_pubkey(&ln_node.pub_key, &lnd_config).await {
+                for c in channels {
+                    node.channels.push(Channel {
+                        capacity: c.capacity,
+                        id: c.channel_id,
+                    });
+                }
+                nodes.push(node);
+            }
+        }
+    }
     Graph {
         timestamp,
         num_bitcoin: bitcoin_nodes.len(),
         num_lightning: lightning_nodes.len(),
         num_overlap: intersection.len(),
-        addresses: intersection.into_iter().map(|a| a.addr.clone()).collect(),
+        nodes,
     }
+}
+
+fn find_node_by_ip(nodes: &[LightningNode], ip: &String) -> Option<LightningNode> {
+    let mut ln_node = None;
+    for node in nodes {
+        for a in &node.addresses {
+            if a.addr.contains(ip) {
+                ln_node = Some(node.clone());
+                break;
+            }
+        }
+    }
+    ln_node
+}
+
+async fn get_channels_by_pubkey(pubkey: &str, lnd_config: &LndConfig) -> Option<Vec<ChannelEdge>> {
+    let mut channels = None;
+    if let Some(nodeinfo) = nodeinfo(lnd_config.clone(), pubkey).await {
+        channels = Some(nodeinfo.channels);
+    }
+    channels
 }
 
 fn clean_bitnodes_snapshot(nodes: &HashMap<String, Bitnode>) -> HashSet<GenericNode> {

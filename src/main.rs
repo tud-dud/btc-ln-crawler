@@ -44,10 +44,11 @@ async fn main() {
         } else {
             info!("Crawl results will be written to {output_dir:#?}/ directory.");
 
-            if let Some(ln_snapshot) = get_ln_snapshot(config).await
+            if let Some(ln_snapshot) = get_ln_snapshot(config.clone()).await
                 && let Some(bitcoin_snapshot) = get_btc_snapshot().await
             {
-                let intersection_graph = find_overlapping_nodes(bitcoin_snapshot, ln_snapshot);
+                let intersection_graph =
+                    find_overlapping_nodes(bitcoin_snapshot, ln_snapshot, config).await;
                 let mut path = output_dir.clone();
                 path.push(format!("crawl-{}.json", intersection_graph.timestamp));
                 if let Ok(f) = File::create(&path) {

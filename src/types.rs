@@ -10,7 +10,21 @@ pub(crate) struct Graph {
     /// public addresses (not nodes since LN nodes can announce multiple)
     pub(crate) num_lightning: usize,
     pub(crate) num_overlap: usize,
-    pub(crate) addresses: Vec<String>,
+    pub(crate) nodes: Vec<Node>,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub(crate) struct Node {
+    pub(crate) address: String,
+    pub(crate) alias: String,
+    pub(crate) channels: Vec<Channel>,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub(crate) struct Channel {
+    pub(crate) id: u64,
+    /// in satoshis
+    pub(crate) capacity: i64,
 }
 
 #[derive(Debug, Deserialize)]
