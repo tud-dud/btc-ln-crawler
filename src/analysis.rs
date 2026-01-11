@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use log::{error, info};
+use log::{debug, error, info};
 use tonic_lnd::lnrpc::{ChannelEdge, ChannelGraph, LightningNode};
 
 use crate::{
@@ -28,20 +28,27 @@ pub(crate) async fn find_overlapping_nodes(
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let mut nodes = vec![];
+    let mut nodes: Vec<Node> = vec![];
     for i in &intersection {
         let mut node = Node::default();
         if let Some(ln_node) = find_node_by_ip(&lightning.nodes, &i.addr) {
             node.address = i.addr.clone();
             node.alias = ln_node.alias.clone();
+            if nodes.iter().any(|n| node.alias == n.alias) {
+                debug!("Skipping {} as we have already visited it.", node.alias);
+                continue;
+            }
             if let Some(channels) = get_channels_by_pubkey(&ln_node.pub_key, &lnd_config).await {
-                for c in channels {
-                    node.channels.push(Channel {
-                        capacity: c.capacity,
-                        id: c.channel_id,
-                    });
+                // only want real nodes
+                if !channels.is_empty() {
+                    for c in channels {
+                        node.channels.push(Channel {
+                            capacity: c.capacity,
+                            id: c.channel_id,
+                        });
+                    }
+                    nodes.push(node);
                 }
-                nodes.push(node);
             }
         }
     }
@@ -49,7 +56,7 @@ pub(crate) async fn find_overlapping_nodes(
         timestamp,
         num_bitcoin: bitcoin_nodes.len(),
         num_lightning: lightning_nodes.len(),
-        num_overlap: intersection.len(),
+        num_overlap: nodes.len(),
         nodes,
     }
 }
