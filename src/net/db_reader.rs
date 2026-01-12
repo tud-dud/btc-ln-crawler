@@ -46,9 +46,9 @@ mod tests {
     #[test]
     fn valid_ip_asn_lookup() {
         let db_reader = DbReader::new();
-        let example: IpAddr = FromStr::from_str("93.184.216.34").unwrap();
+        let example: IpAddr = FromStr::from_str("46.229.165.147").unwrap();
         let actual = db_reader.lookup_asn(example);
-        let expected = Some(15133);
+        let expected = Some(39572);
         assert_eq!(actual, expected);
     }
 

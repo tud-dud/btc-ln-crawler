@@ -21,7 +21,7 @@ build:
     - echo "Building code"
     - cargo build --all --release
 
-test-nfq:
+test:
   stage: test
   script:
     - echo "Running unit tests"
