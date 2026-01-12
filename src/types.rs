@@ -2,6 +2,8 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::PathBuf};
 
+use crate::net::Asn;
+
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct Graph {
     pub(crate) timestamp: u64,
@@ -17,6 +19,7 @@ pub(crate) struct Graph {
 pub(crate) struct Node {
     pub(crate) address: String,
     pub(crate) alias: String,
+    pub(crate) asn: Asn,
     pub(crate) channels: Vec<Channel>,
 }
 

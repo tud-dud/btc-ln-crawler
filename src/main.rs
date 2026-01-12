@@ -6,6 +6,7 @@ use std::{fs::File, path::PathBuf};
 use types::LndConfig;
 
 mod analysis;
+mod net;
 mod rpc;
 mod types;
 

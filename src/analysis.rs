@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, SocketAddr},
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -8,6 +9,7 @@ use log::{debug, error, info};
 use tonic_lnd::lnrpc::{ChannelEdge, ChannelGraph, LightningNode};
 
 use crate::{
+    net::DbReader,
     rpc::nodeinfo,
     types::{Bitnode, BitnodesSnapshot, Channel, GenericNode, Graph, LndConfig, Node},
 };
@@ -28,12 +30,18 @@ pub(crate) async fn find_overlapping_nodes(
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+    let db_reader = DbReader::new();
     let mut nodes: Vec<Node> = vec![];
     for i in &intersection {
         let mut node = Node::default();
         if let Some(ln_node) = find_node_by_ip(&lightning.nodes, &i.addr) {
             node.address = i.addr.clone();
             node.alias = ln_node.alias.clone();
+            node.asn = if let Ok(ip) = IpAddr::from_str(&node.address) {
+                db_reader.lookup_asn(ip).unwrap_or(u32::MAX)
+            } else {
+                u32::MAX
+            };
             if nodes.iter().any(|n| node.alias == n.alias) {
                 debug!("Skipping {} as we have already visited it.", node.alias);
                 continue;
